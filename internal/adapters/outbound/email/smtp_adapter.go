@@ -8,8 +8,6 @@ import (
 	"github.com/Xuntacdor/payment-service/internal/domain/port"
 )
 
-// SMTPEmailAdapter implements EmailPort using standard net/smtp.
-// Swap this with a SendGridAdapter or SESAdapter without touching any domain code.
 type SMTPEmailAdapter struct {
 	host     string
 	port     string
@@ -18,7 +16,6 @@ type SMTPEmailAdapter struct {
 	from     string
 }
 
-// NewSMTPEmailAdapter constructs the SMTP adapter
 func NewSMTPEmailAdapter(host, smtpPort, username, password, from string) port.EmailPort {
 	return &SMTPEmailAdapter{
 		host:     host,

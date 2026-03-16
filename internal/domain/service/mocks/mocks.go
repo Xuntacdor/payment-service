@@ -7,10 +7,6 @@ import (
 	"github.com/Xuntacdor/payment-service/internal/domain/port"
 )
 
-// ---- Mock PaymentGatewayPort ----
-
-// MockPaymentGateway is a controllable test double for PaymentGatewayPort.
-// Set ShouldFail = true to simulate gateway errors.
 type MockPaymentGateway struct {
 	ShouldFail bool
 }
@@ -39,9 +35,6 @@ func (m *MockPaymentGateway) GetTransaction(id string) (*port.GatewayChargeOutpu
 	return &port.GatewayChargeOutput{GatewayTransactionID: id, Status: "success"}, nil
 }
 
-// ---- In-Memory PaymentRepositoryPort ----
-
-// InMemoryPaymentRepository stores payments in memory for isolated unit tests.
 type InMemoryPaymentRepository struct {
 	store map[string]*entity.Payment
 }
@@ -80,9 +73,6 @@ func (r *InMemoryPaymentRepository) Update(p *entity.Payment) error {
 	return nil
 }
 
-// ---- In-Memory TransactionRepositoryPort ----
-
-// InMemoryTransactionRepository stores transactions in memory for isolated unit tests.
 type InMemoryTransactionRepository struct {
 	store []entity.Transaction
 }
@@ -106,9 +96,6 @@ func (r *InMemoryTransactionRepository) FindByPaymentID(paymentID string) ([]ent
 	return result, nil
 }
 
-// ---- Mock EventPublisherPort ----
-
-// MockEventPublisher records all published events for assertion in tests.
 type MockEventPublisher struct {
 	Published []map[string]interface{}
 }
@@ -121,9 +108,6 @@ func (m *MockEventPublisher) Publish(eventName string, payload interface{}) erro
 	return nil
 }
 
-// ---- Mock EmailPort ----
-
-// MockEmailAdapter is a no-op email adapter for tests.
 type MockEmailAdapter struct {
 	SentEmails []string
 }

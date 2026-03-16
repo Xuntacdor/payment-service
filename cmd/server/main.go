@@ -13,27 +13,23 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
+	"github.com/Xuntacdor/payment-service/config"
 	restadapter "github.com/Xuntacdor/payment-service/internal/adapters/inbound/rest"
-	usecase     "github.com/Xuntacdor/payment-service/internal/adapters/inbound/rest"
 	emailadapter "github.com/Xuntacdor/payment-service/internal/adapters/outbound/email"
-	messaging   "github.com/Xuntacdor/payment-service/internal/adapters/outbound/messaging"
-	repo        "github.com/Xuntacdor/payment-service/internal/adapters/outbound/repository"
+	messaging "github.com/Xuntacdor/payment-service/internal/adapters/outbound/messaging"
+	repo "github.com/Xuntacdor/payment-service/internal/adapters/outbound/repository"
 	stripeadapter "github.com/Xuntacdor/payment-service/internal/adapters/outbound/stripe"
-	"github.com/Xuntacdor/payment-service/internal/config"
 )
 
 func main() {
-	// ── Logger ────────────────────────────────────────────────────────────
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
 
-	// ── Config ────────────────────────────────────────────────────────────
 	cfg, err := config.Load()
 	if err != nil {
 		logger.Fatal("failed to load config", zap.Error(err))
 	}
 
-	// ── Database ──────────────────────────────────────────────────────────
 	db, err := gorm.Open(postgres.Open(cfg.Database.DSN), &gorm.Config{})
 	if err != nil {
 		logger.Fatal("failed to connect to database", zap.Error(err))
@@ -43,32 +39,26 @@ func main() {
 	}
 	logger.Info("database migrations complete")
 
-	// ── Outbound Adapters ─────────────────────────────────────────────────
-	paymentRepo     := repo.NewPostgresPaymentRepository(db)
+	paymentRepo := repo.NewPostgresPaymentRepository(db)
 	transactionRepo := repo.NewPostgresTransactionRepository(db)
-	gateway         := stripeadapter.NewStripeAdapter(cfg.Stripe.SecretKey)
-	emailAdapter    := emailadapter.NewSMTPEmailAdapter(
+	gateway := stripeadapter.NewStripeAdapter(cfg.Stripe.SecretKey)
+	emailAdapter := emailadapter.NewSMTPEmailAdapter(
 		cfg.Email.Host, cfg.Email.Port,
 		cfg.Email.Username, cfg.Email.Password, cfg.Email.From,
 	)
 	eventPublisher := messaging.NewMockKafkaPublisher(logger)
 
-	// ── Use Cases ─────────────────────────────────────────────────────────
-	processPaymentUC := usecase.NewProcessPaymentUseCase(paymentRepo, transactionRepo, gateway, eventPublisher)
-	refundUC         := usecase.NewRefundUseCase(paymentRepo, gateway, emailAdapter, eventPublisher)
-	cancelUC         := usecase.NewCancelPaymentUseCase(paymentRepo, eventPublisher)
-	getPaymentUC     := usecase.NewGetPaymentUseCase(paymentRepo)
-
-	// ── Inbound Adapter ───────────────────────────────────────────────────
+	processPaymentUC := restadapter.NewProcessPaymentUseCase(paymentRepo, transactionRepo, gateway, eventPublisher)
+	refundUC := restadapter.NewRefundUseCase(paymentRepo, gateway, emailAdapter, eventPublisher)
+	cancelUC := restadapter.NewCancelPaymentUseCase(paymentRepo, eventPublisher)
+	getPaymentUC := restadapter.NewGetPaymentUseCase(paymentRepo)
 	handler := restadapter.NewPaymentHandler(processPaymentUC, refundUC, cancelUC, getPaymentUC)
 
-	// ── Router ────────────────────────────────────────────────────────────
 	router := gin.New()
 	router.Use(gin.Recovery(), restadapter.PrometheusMiddleware())
 	v1 := router.Group("/api/v1")
 	handler.RegisterRoutes(router, v1)
 
-	// ── Graceful HTTP Server ──────────────────────────────────────────────
 	srv := &http.Server{
 		Addr:         ":" + cfg.Server.Port,
 		Handler:      router,

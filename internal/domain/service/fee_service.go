@@ -7,14 +7,12 @@ import (
 	"github.com/Xuntacdor/payment-service/internal/domain/entity"
 )
 
-// FeeRate defines the percentage fee charged per payment method
 var FeeRate = map[entity.PaymentMethod]float64{
-	entity.MethodCard:         0.029, // 2.9%
-	entity.MethodWallet:       0.015, // 1.5%
-	entity.MethodBankTransfer: 0.005, // 0.5%
+	entity.MethodCard:         0.029,
+	entity.MethodWallet:       0.015,
+	entity.MethodBankTransfer: 0.005,
 }
 
-// FeeResult holds the full fee breakdown for a payment
 type FeeResult struct {
 	BaseAmount float64
 	FeeAmount  float64
@@ -22,8 +20,6 @@ type FeeResult struct {
 	Currency   string
 }
 
-// CalculateFee computes the transaction fee for a given payment amount and method.
-// This is pure domain logic — no external dependencies.
 func CalculateFee(money entity.Money, method entity.PaymentMethod) (FeeResult, error) {
 	rate, ok := FeeRate[method]
 	if !ok {
@@ -38,8 +34,6 @@ func CalculateFee(money entity.Money, method entity.PaymentMethod) (FeeResult, e
 	}, nil
 }
 
-// ValidatePayment enforces domain business rules before a payment is initiated.
-// Returns a descriptive error if any rule is violated.
 func ValidatePayment(orderID string, money entity.Money, method entity.PaymentMethod) error {
 	if orderID == "" {
 		return errors.New("orderID cannot be empty")
@@ -53,14 +47,13 @@ func ValidatePayment(orderID string, money entity.Money, method entity.PaymentMe
 	if method == "" {
 		return errors.New("payment method is required")
 	}
-	// Stripe minimum charge amount
+
 	if money.Currency == "USD" && money.Amount < 0.50 {
 		return errors.New("minimum payment amount is $0.50 USD")
 	}
 	return nil
 }
 
-// round rounds a float64 to 2 decimal places
 func round(val float64) float64 {
 	return math.Round(val*100) / 100
 }

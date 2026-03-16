@@ -4,14 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"gorm.io/gorm"
 	"github.com/Xuntacdor/payment-service/internal/domain/entity"
 	"github.com/Xuntacdor/payment-service/internal/domain/port"
+	"gorm.io/gorm"
 )
 
-// ---- GORM Models (persistence models, separate from domain entities) ----
-
-// PaymentModel is the GORM database model for the payments table
 type PaymentModel struct {
 	PaymentID     string    `gorm:"primaryKey;column:payment_id"`
 	OrderID       string    `gorm:"uniqueIndex;column:order_id"`
@@ -25,7 +22,6 @@ type PaymentModel struct {
 
 func (PaymentModel) TableName() string { return "payments" }
 
-// TransactionModel is the GORM database model for the transactions table
 type TransactionModel struct {
 	TransactionID        string    `gorm:"primaryKey;column:transaction_id"`
 	PaymentID            string    `gorm:"index;column:payment_id"`
@@ -39,14 +35,10 @@ type TransactionModel struct {
 
 func (TransactionModel) TableName() string { return "transactions" }
 
-// ---- Payment Repository ----
-
-// postgresPaymentRepository implements PaymentRepositoryPort using GORM + PostgreSQL
 type postgresPaymentRepository struct {
 	db *gorm.DB
 }
 
-// NewPostgresPaymentRepository constructs the repository adapter
 func NewPostgresPaymentRepository(db *gorm.DB) port.PaymentRepositoryPort {
 	return &postgresPaymentRepository{db: db}
 }
@@ -85,14 +77,10 @@ func (r *postgresPaymentRepository) Update(payment *entity.Payment) error {
 	return nil
 }
 
-// ---- Transaction Repository ----
-
-// postgresTransactionRepository implements TransactionRepositoryPort
 type postgresTransactionRepository struct {
 	db *gorm.DB
 }
 
-// NewPostgresTransactionRepository constructs the transaction repository adapter
 func NewPostgresTransactionRepository(db *gorm.DB) port.TransactionRepositoryPort {
 	return &postgresTransactionRepository{db: db}
 }
@@ -133,8 +121,6 @@ func (r *postgresTransactionRepository) FindByPaymentID(paymentID string) ([]ent
 	}
 	return txs, nil
 }
-
-// ---- Mapper functions ----
 
 func toPaymentModel(p *entity.Payment) PaymentModel {
 	return PaymentModel{

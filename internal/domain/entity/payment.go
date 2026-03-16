@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// PaymentStatus represents the lifecycle state of a payment
 type PaymentStatus string
 
 const (
@@ -20,7 +19,6 @@ const (
 	StatusCancelled       PaymentStatus = "CANCELLED"
 )
 
-// PaymentMethod represents the method used for payment
 type PaymentMethod string
 
 const (
@@ -29,13 +27,11 @@ const (
 	MethodBankTransfer PaymentMethod = "BANK_TRANSFER"
 )
 
-// Money is a Value Object representing an amount with currency (immutable)
 type Money struct {
 	Amount   float64
 	Currency string
 }
 
-// NewMoney creates a validated Money value object
 func NewMoney(amount float64, currency string) (Money, error) {
 	if amount <= 0 {
 		return Money{}, errors.New("amount must be greater than zero")
@@ -46,11 +42,9 @@ func NewMoney(amount float64, currency string) (Money, error) {
 	return Money{Amount: amount, Currency: currency}, nil
 }
 
-// Payment is the Aggregate Root of the payment domain.
-// All state changes must go through its methods — never mutate fields directly.
 type Payment struct {
 	PaymentID     string
-	OrderID       string // used as idempotency key
+	OrderID       string
 	Amount        Money
 	Status        PaymentStatus
 	PaymentMethod PaymentMethod
@@ -59,7 +53,6 @@ type Payment struct {
 	Transactions  []Transaction
 }
 
-// NewPayment creates a new Payment aggregate with validation
 func NewPayment(orderID string, amount Money, method PaymentMethod) (*Payment, error) {
 	if orderID == "" {
 		return nil, errors.New("orderID is required")
@@ -75,7 +68,6 @@ func NewPayment(orderID string, amount Money, method PaymentMethod) (*Payment, e
 	}, nil
 }
 
-// Authorize transitions the payment to AUTHORIZED state
 func (p *Payment) Authorize() error {
 	if p.Status != StatusCreated {
 		return errors.New("only CREATED payments can be authorized")
@@ -85,7 +77,6 @@ func (p *Payment) Authorize() error {
 	return nil
 }
 
-// Capture transitions the payment to CAPTURED state
 func (p *Payment) Capture() error {
 	if p.Status != StatusAuthorized {
 		return errors.New("only AUTHORIZED payments can be captured")
@@ -95,7 +86,6 @@ func (p *Payment) Capture() error {
 	return nil
 }
 
-// Fail marks the payment as FAILED
 func (p *Payment) Fail() error {
 	if p.Status == StatusCaptured || p.Status == StatusRefunded {
 		return errors.New("cannot fail a captured or refunded payment")
@@ -105,7 +95,6 @@ func (p *Payment) Fail() error {
 	return nil
 }
 
-// Refund transitions a captured payment to REFUNDED state
 func (p *Payment) Refund() error {
 	if p.Status != StatusCaptured {
 		return errors.New("only CAPTURED payments can be refunded")
@@ -115,7 +104,6 @@ func (p *Payment) Refund() error {
 	return nil
 }
 
-// Cancel transitions the payment to CANCELLED state
 func (p *Payment) Cancel() error {
 	if p.Status == StatusCaptured || p.Status == StatusRefunded {
 		return errors.New("cannot cancel a captured or refunded payment")
@@ -125,7 +113,6 @@ func (p *Payment) Cancel() error {
 	return nil
 }
 
-// AddTransaction appends a gateway transaction record to this payment
 func (p *Payment) AddTransaction(tx Transaction) {
 	p.Transactions = append(p.Transactions, tx)
 	p.UpdatedAt = time.Now()

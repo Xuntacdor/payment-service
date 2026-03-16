@@ -6,8 +6,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Config holds all application configuration.
-// Values are loaded from environment variables (12-factor app style).
 type Config struct {
 	Server   ServerConfig
 	Database DatabaseConfig
@@ -41,15 +39,12 @@ type EmailConfig struct {
 	From     string
 }
 
-// Load reads config from environment variables (with .env file fallback).
-// Returns an error if any required variable is missing.
 func Load() (*Config, error) {
 	viper.SetConfigFile(".env")
 	viper.SetConfigType("env")
 	viper.AutomaticEnv()
-	_ = viper.ReadInConfig() // .env is optional; real env vars take precedence
+	_ = viper.ReadInConfig()
 
-	// Defaults
 	viper.SetDefault("PORT", "8080")
 	viper.SetDefault("REDIS_ADDR", "localhost:6379")
 	viper.SetDefault("EMAIL_PORT", "587")
@@ -74,7 +69,6 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
-// validate checks that all required configuration values are present
 func (c *Config) validate() error {
 	if c.Database.DSN == "" {
 		return fmt.Errorf("DATABASE_DSN is required")

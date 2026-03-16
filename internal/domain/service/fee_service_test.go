@@ -7,8 +7,6 @@ import (
 	"github.com/Xuntacdor/payment-service/internal/domain/service"
 )
 
-// ---- CalculateFee Tests ----
-
 func TestCalculateFee_Card_Success(t *testing.T) {
 	money := entity.Money{Amount: 100.00, Currency: "USD"}
 	result, err := service.CalculateFee(money, entity.MethodCard)
@@ -52,8 +50,6 @@ func TestCalculateFee_UnsupportedMethod(t *testing.T) {
 		t.Fatal("expected error for unsupported payment method")
 	}
 }
-
-// ---- ValidatePayment Tests ----
 
 func TestValidatePayment_Valid(t *testing.T) {
 	money := entity.Money{Amount: 50.00, Currency: "USD"}

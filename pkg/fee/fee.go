@@ -1,6 +1,3 @@
-// Package fee provides a reusable, standalone fee calculation library.
-// It has zero dependencies on payment-service internals and can be imported
-// by order-service or any other microservice that needs to preview fees.
 package fee
 
 import (
@@ -8,7 +5,6 @@ import (
 	"math"
 )
 
-// Method represents a supported payment method
 type Method string
 
 const (
@@ -17,14 +13,12 @@ const (
 	MethodBankTransfer Method = "BANK_TRANSFER"
 )
 
-// rates maps each payment method to its percentage fee
 var rates = map[Method]float64{
 	MethodCard:         0.029,
 	MethodWallet:       0.015,
 	MethodBankTransfer: 0.005,
 }
 
-// Result holds a full fee breakdown
 type Result struct {
 	BaseAmount float64 `json:"base_amount"`
 	FeeAmount  float64 `json:"fee_amount"`
@@ -33,8 +27,6 @@ type Result struct {
 	RateUsed   float64 `json:"rate_used"`
 }
 
-// Calculate computes the fee for a given amount, currency, and payment method.
-// This function is pure and stateless — safe to call from any service.
 func Calculate(amount float64, currency string, method Method) (Result, error) {
 	if amount <= 0 {
 		return Result{}, errors.New("amount must be positive")
