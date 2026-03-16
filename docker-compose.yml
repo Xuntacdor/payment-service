@@ -1,0 +1,66 @@
+version: "3.9"
+
+services:
+  payment-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      DATABASE_DSN: postgres://payment:payment@postgres:5432/payment_db?sslmode=disable
+      REDIS_ADDR: redis:6379
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      EMAIL_HOST: mailhog
+      EMAIL_PORT: 1025
+      EMAIL_FROM: noreply@payment.local
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: payment
+      POSTGRES_PASSWORD: payment
+      POSTGRES_DB: payment_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payment -d payment_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+
+  # Local email catcher — view emails at http://localhost:8025
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "8025:8025" # Web UI
+      - "1025:1025" # SMTP
+
+  # Prometheus metrics scraping
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml
+
+volumes:
+  postgres_data:
+  redis_data:
