@@ -1,0 +1,265 @@
+openapi: "3.0.3"
+info:
+  title: Payment Service API
+  description: |
+    Payment microservice following Hexagonal Architecture.
+    Handles payment lifecycle: create → authorize → capture → refund/cancel.
+  version: "1.0.0"
+  contact:
+    name: Payment Team
+    email: payments@yourorg.com
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development
+  - url: https://api.yourorg.com/api/v1
+    description: Production
+
+tags:
+  - name: payments
+    description: Payment lifecycle operations
+  - name: observability
+    description: Health and metrics endpoints
+
+paths:
+  /health:
+    get:
+      tags: [observability]
+      summary: Health check
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: payment-service
+
+  /payments:
+    post:
+      tags: [payments]
+      summary: Create and capture a payment
+      description: |
+        Creates a new payment for the given order, calls the payment gateway,
+        and captures funds in a single operation.
+        Idempotent: sending the same order_id twice returns an error.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePaymentRequest"
+      responses:
+        "201":
+          description: Payment created and captured successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatePaymentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /payments/{id}:
+    get:
+      tags: [payments]
+      summary: Get payment by ID
+      parameters:
+        - $ref: "#/components/parameters/PaymentID"
+      responses:
+        "200":
+          description: Payment details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [payments]
+      summary: Cancel a payment
+      description: Cancels a payment that has not yet been captured.
+      parameters:
+        - $ref: "#/components/parameters/PaymentID"
+      responses:
+        "200":
+          description: Payment cancelled
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /payments/{id}/refund:
+    post:
+      tags: [payments]
+      summary: Refund a payment
+      description: Refunds a previously captured payment back to the original payment method.
+      parameters:
+        - $ref: "#/components/parameters/PaymentID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefundRequest"
+      responses:
+        "200":
+          description: Refund processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefundResponse"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+components:
+  parameters:
+    PaymentID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: "550e8400-e29b-41d4-a716-446655440000"
+
+  schemas:
+    CreatePaymentRequest:
+      type: object
+      required: [order_id, amount, currency, payment_method]
+      properties:
+        order_id:
+          type: string
+          example: "order-abc-123"
+        amount:
+          type: number
+          format: float
+          minimum: 0.01
+          example: 99.99
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: "USD"
+        payment_method:
+          type: string
+          enum: [CARD, WALLET, BANK_TRANSFER]
+          example: "CARD"
+
+    CreatePaymentResponse:
+      type: object
+      properties:
+        payment_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [CREATED, AUTHORIZED, CAPTURED, FAILED]
+        fee:
+          type: number
+          format: float
+          example: 2.90
+        total:
+          type: number
+          format: float
+          example: 102.90
+
+    RefundRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          example: "Customer requested refund"
+
+    RefundResponse:
+      type: object
+      properties:
+        payment_id:
+          type: string
+        status:
+          type: string
+          example: "REFUNDED"
+        refunded_amount:
+          type: number
+          format: float
+
+    Payment:
+      type: object
+      properties:
+        payment_id:
+          type: string
+          format: uuid
+        order_id:
+          type: string
+        amount:
+          $ref: "#/components/schemas/Money"
+        status:
+          type: string
+          enum: [CREATED, AUTHORIZED, PARTIAL_CAPTURED, CAPTURED, FAILED, REFUNDED, CANCELLED]
+        payment_method:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+
+    Money:
+      type: object
+      properties:
+        amount:
+          type: number
+        currency:
+          type: string
+
+    Transaction:
+      type: object
+      properties:
+        transaction_id:
+          type: string
+        gateway:
+          type: string
+          enum: [STRIPE, PAYPAL, VNPAY, MOMO]
+        gateway_transaction_id:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Invalid request body or missing required fields
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    UnprocessableEntity:
+      description: Business rule violation or gateway error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
