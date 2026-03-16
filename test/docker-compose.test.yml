@@ -1,0 +1,39 @@
+version: "3.9"
+
+# docker-compose file for running integration tests in CI.
+# Usage: docker-compose -f test/docker-compose.test.yml up --abort-on-container-exit
+
+services:
+  test-runner:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: builder       # use the build stage so we have 'go test'
+    command: go test ./... -v -coverprofile=/coverage/coverage.out -covermode=atomic
+    environment:
+      DATABASE_DSN: postgres://payment:payment@test-postgres:5432/payment_test?sslmode=disable
+      STRIPE_SECRET_KEY: sk_test_dummy
+      REDIS_ADDR: test-redis:6379
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+    volumes:
+      - coverage:/coverage
+
+  test-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: payment
+      POSTGRES_PASSWORD: payment
+      POSTGRES_DB: payment_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payment -d payment_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  test-redis:
+    image: redis:7-alpine
+
+volumes:
+  coverage:
