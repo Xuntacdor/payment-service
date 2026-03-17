@@ -1,0 +1,30 @@
+replicaCount: 1
+
+image:
+  repository: payment-service
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8080
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+env:
+  PORT: "8080"
+  DATABASE_DSN: "postgres://payment:payment@payment-db:5432/payment_db?sslmode=disable"
+  REDIS_ADDR: "payment-redis:6379"
+  KAFKA_BROKERS: "payment-kafka:9092"
+  KAFKA_TOPIC: "payment-events"
+  API_KEY: "my-secret-api-key"
+  STRIPE_SECRET_KEY: "sk_test_..."
+  VNPAY_TMN_CODE: "your_tmn_code"
+  VNPAY_HASH_SECRET: "your_hash_secret"
+  VNPAY_RETURN_URL: "http://example.com/api/v1/payments/vnpay/callback"
