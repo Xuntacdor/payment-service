@@ -1,10 +1,12 @@
 package messaging
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
 	"github.com/Xuntacdor/payment-service/internal/domain/port"
+	kafka "github.com/segmentio/kafka-go"
 	"go.uber.org/zap"
 )
 
@@ -34,45 +36,40 @@ func (p *MockKafkaPublisher) Publish(eventName string, payload interface{}) erro
 	return nil
 }
 
-// ---- Real Kafka Publisher (uncomment + add segmentio/kafka-go to go.mod) ----
-//
-// import (
-//     "context"
-//     kafka "github.com/segmentio/kafka-go"
-// )
-//
-// type RealKafkaPublisher struct {
-//     writer *kafka.Writer
-//     logger *zap.Logger
-// }
-//
-// func NewRealKafkaPublisher(brokers []string, topic string, logger *zap.Logger) port.EventPublisherPort {
-//     return &RealKafkaPublisher{
-//         writer: &kafka.Writer{
-//             Addr:                   kafka.TCP(brokers...),
-//             Topic:                  topic,
-//             AllowAutoTopicCreation: true,
-//             Balancer:               &kafka.LeastBytes{},
-//         },
-//         logger: logger,
-//     }
-// }
-//
-// func (p *RealKafkaPublisher) Publish(eventName string, payload interface{}) error {
-//     data, err := json.Marshal(DomainEvent{EventName: eventName, Payload: payload})
-//     if err != nil {
-//         return fmt.Errorf("marshal failed: %w", err)
-//     }
-//     err = p.writer.WriteMessages(context.Background(),
-//         kafka.Message{
-//             Key:   []byte(eventName),
-//             Value: data,
-//         },
-//     )
-//     if err != nil {
-//         p.logger.Error("kafka publish failed", zap.Error(err))
-//         return fmt.Errorf("kafka publish failed: %w", err)
-//     }
-//     p.logger.Info("event published", zap.String("event", eventName))
-//     return nil
-// }
+// ---- Real Kafka Publisher ----
+
+type RealKafkaPublisher struct {
+	writer *kafka.Writer
+	logger *zap.Logger
+}
+
+func NewRealKafkaPublisher(brokers []string, topic string, logger *zap.Logger) port.EventPublisherPort {
+	return &RealKafkaPublisher{
+		writer: &kafka.Writer{
+			Addr:                   kafka.TCP(brokers...),
+			Topic:                  topic,
+			AllowAutoTopicCreation: true,
+			Balancer:               &kafka.LeastBytes{},
+		},
+		logger: logger,
+	}
+}
+
+func (p *RealKafkaPublisher) Publish(eventName string, payload interface{}) error {
+	data, err := json.Marshal(DomainEvent{EventName: eventName, Payload: payload})
+	if err != nil {
+		return fmt.Errorf("marshal failed: %w", err)
+	}
+	err = p.writer.WriteMessages(context.Background(),
+		kafka.Message{
+			Key:   []byte(eventName),
+			Value: data,
+		},
+	)
+	if err != nil {
+		p.logger.Error("kafka publish failed", zap.Error(err))
+		return fmt.Errorf("kafka publish failed: %w", err)
+	}
+	p.logger.Info("event published", zap.String("event", eventName))
+	return nil
+}
