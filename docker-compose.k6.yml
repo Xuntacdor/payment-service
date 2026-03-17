@@ -1,0 +1,9 @@
+version: "3"
+services:
+  k6:
+    image: grafana/k6:latest
+    volumes:
+      - ./scripts:/scripts
+    command: run /scripts/loadtest.js
+    environment:
+      - BASE_URL=http://host.docker.internal:8080/api/v1
