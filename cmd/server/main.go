@@ -42,6 +42,13 @@ func main() {
 	paymentRepo := repo.NewPostgresPaymentRepository(db)
 	transactionRepo := repo.NewPostgresTransactionRepository(db)
 	gateway := stripeadapter.NewStripeAdapter(cfg.Stripe.SecretKey)
+	/*
+			gateway := vnpay.NewVNPayAdapter(vnpay.Config{
+		    TmnCode:    cfg.VNPay.TmnCode,
+		    HashSecret: cfg.VNPay.HashSecret,
+		    ReturnURL:  cfg.VNPay.ReturnURL,
+		})
+	*/
 	emailAdapter := emailadapter.NewSMTPEmailAdapter(
 		cfg.Email.Host, cfg.Email.Port,
 		cfg.Email.Username, cfg.Email.Password, cfg.Email.From,

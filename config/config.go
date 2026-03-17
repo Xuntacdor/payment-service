@@ -31,6 +31,12 @@ type StripeConfig struct {
 	SecretKey string
 }
 
+type VNPayConfig struct {
+	TmnCode    string
+	HashSecret string
+	ReturnURL  string
+}
+
 type EmailConfig struct {
 	Host     string
 	Port     string
